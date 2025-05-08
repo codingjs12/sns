@@ -1,8 +1,14 @@
+import { Route, Routes, useLocation } from 'react-router-dom';
+import Join from './components/Join'
 function App() {
+
+
   return (
-    <>
-    <h1>MySNS</h1>
-    </>
+    <Routes>
+      <Route path='/join' element={<Join/>}>
+      
+      </Route>
+    </Routes>
   );
 }
 
