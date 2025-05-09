@@ -1,6 +1,6 @@
-import {useState} from 'react';
+import { useState } from 'react';
 import { TextField, Button, Container, Typography, Box } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 function Join() {
 
@@ -8,7 +8,7 @@ function Join() {
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-
+  const navigate = useNavigate();
   const join = () => {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -24,7 +24,7 @@ function Join() {
     }
 
 
-    fetch('http://localhost:3000/user/join', {
+    fetch('http://localhost:3000/join', {
       method : 'POST',
       headers : {
         'Content-Type': 'application/json',
@@ -34,6 +34,7 @@ function Join() {
   .then(res => res.json())
   .then(data => {
     alert(data.message);
+    navigate("/");
   })
 }
 
