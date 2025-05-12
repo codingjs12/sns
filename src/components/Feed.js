@@ -36,6 +36,14 @@ function Feed() {
   const [imgList, setImgList] = useState();
   const token = localStorage.getItem("token");
   const sessionUser = jwtDecode(token);
+  const [parentId, setParentId] = useState(null);
+  const [replyTo, setReplyTo] = useState(null); // 대댓글 입력할 댓글 ID
+  const [replyContent, setReplyContent] = useState(''); // 대댓글 내용
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [editFeedId, setEditFeedId] = useState(null);
 
   const fnFeedList = () => {
     fetch("http://localhost:3000/feed")
@@ -49,6 +57,16 @@ function Feed() {
     fnFeedList();
   }, [])
 
+  const fnGetComments = (feed) => {
+    fetch("http://localhost:3000/feed/" + feed.feed_id + "/comments")
+    .then(res=>res.json())
+    .then(data=>{
+      const commentList = data.comments || [];
+      const tree = buildCommentTree(commentList);
+      console.log(tree);
+      setComments(tree);
+    })
+  }
   const handleClickOpen = (feed) => {
 
     fetch("http://localhost:3000/feed/" + feed.feed_id)
@@ -57,12 +75,7 @@ function Feed() {
       setSelectedFeed(data.feed);
       setImgList(data.imgList);
     })
-
-    fetch("http://localhost:3000/feed/" + feed.feed_id + "/comments")
-    .then(res=>res.json())
-    .then(data=>{
-      setComments(data.comments);
-    })
+    fnGetComments(feed);
     setOpen(true);
     setNewComment('');
   };
@@ -82,19 +95,15 @@ function Feed() {
               },
               body : JSON.stringify({
                 userId : sessionUser.userId,
-                comments_content : newComment
+                comments_content : newComment,
+                parent_id : parentId
               })
         })
         .then(res => res.json())
         .then(data => {
-            setComments(prev => [
-                ...prev,
-                {
-                  user_nickname: sessionUser.userNickname,
-                  comments_content: newComment
-                }
-              ]);
-              setNewComment('');
+          setNewComment('');
+          setParentId(null);
+          fnGetComments(selectedFeed);
         })
     }
   };
@@ -111,19 +120,122 @@ function Feed() {
   };
 
   const fnDeleteComments = (commentsId) => {
-    fetch("http://localhost:3000/feed/"+commentsId, {
+    fetch("http://localhost:3000/feed/"+commentsId +"/comments", {
         method : "DELETE"
     })
     .then(res => res.json())
+    .then(data => {
+      console.log(data.message);
+      fnGetComments(selectedFeed);
+      
+    })
   };
 
   const fnEditFeed = (feedId) => {
-
+    setEditOpen(true);
+    setEditTitle(selectedFeed.feed_title);
+    setEditContent(selectedFeed.feed_content);
   }
 
   const fnEditComment = (commentsId) => {
 
   }
+
+  const buildCommentTree = (flatComments) => {
+    const commentMap = {};
+    const tree = [];
+
+    flatComments.forEach(comment => {
+      comment.children = []; // 대댓글을 담을 배열 추가
+      commentMap[comment.comments_id] = comment;
+    });
+
+    flatComments.forEach(comment => {
+      if (comment.parent_comments_id) {
+        // 대댓글이면 부모에 추가
+        const parent = commentMap[comment.parent_comments_id];
+        if (parent) {
+          parent.children.push(comment);
+        }
+      } else {
+        // 일반 댓글이면 트리에 추가
+        tree.push(comment);
+      }
+    });
+
+    return tree;
+  };
+  const renderComment = (comment, depth = 0) => (
+  <Box key={comment.comments_id} sx={{ pl: depth * 4, mt: 2 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <ListItemAvatar>
+        <Avatar>{comment.user_nickname.charAt(0).toUpperCase()}</Avatar>
+      </ListItemAvatar>
+      <ListItemText
+        primary={comment.is_deleted == 'Y' ? "삭제된 댓글입니다." : comment.comments_content}
+        secondary={comment.user_nickname}
+      />
+      {sessionUser.userId === comment.user_id && (comment.is_deleted == 'N' || isAllChildrenDeleted(comment)) && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', ml: 1 }}>
+          <Button size="small" onClick={() => fnEditComment(comment.comments_id)}>수정</Button>
+          <Button size="small" color="error" onClick={() => fnDeleteComments(comment.comments_id)}>삭제</Button>
+        </Box>
+      )}
+    </Box>
+
+    <Box sx={{ mt: 1, pl: 7 }}>
+      <Button variant="outlined" size="small" onClick={() => setReplyTo(comment.comments_id)}>
+        댓글 달기
+      </Button>
+      {replyTo === comment.comments_id && (
+        <Box sx={{ mt: 1 }}>
+          <TextField
+            label="대댓글 입력"
+            variant="outlined"
+            fullWidth
+            value={replyContent}
+            onChange={(e) => setReplyContent(e.target.value)}
+          />
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => {
+              fetch(`http://localhost:3000/feed/${selectedFeed.feed_id}/comments`, {
+                method: "POST",
+                headers: {
+                  "Content-type": "application/json"
+                },
+                body: JSON.stringify({
+                  userId: sessionUser.userId,
+                  comments_content: replyContent,
+                  parent_id: replyTo
+                })
+              })
+              .then(res => res.json())
+              .then(() => {
+                fnGetComments(selectedFeed); // 댓글 새로고침
+                setReplyTo(null);
+                setReplyContent('');
+              });
+            }}
+            sx={{ mt: 1 }}
+          >
+            등록
+          </Button>
+        </Box>
+      )}
+    </Box>
+
+    {comment.children && comment.children.map(child => renderComment(child, depth + 1))}
+  </Box>
+);
+
+const isAllChildrenDeleted = (comment) => {
+  if (!comment.children || comment.children.length === 0) return true;
+  return comment.children.every(child => child.is_deleted === 'Y');
+};
+
+
 
   return (
     <Container maxWidth="md">
@@ -203,20 +315,7 @@ function Feed() {
           <Box sx={{ width: '300px', marginLeft: '20px' }}>
             <Typography variant="h6">댓글</Typography>
             <List>
-              {comments.map((comment, index) => (
-                <ListItem key={index}>
-                  <ListItemAvatar>
-                    <Avatar>{comment.user_nickname.charAt(0).toUpperCase()}</Avatar> {/* 아이디의 첫 글자를 아바타로 표시 */}
-                  </ListItemAvatar>
-                  <ListItemText primary={comment.comments_content} secondary={comment.user_nickname} /> {/* 아이디 표시 */}
-                  {sessionUser.userId === comment.user_id && (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', ml: 1 }}>
-                        <Button size="small" onClick={() => fnEditComment(index)}>수정</Button>
-                        <Button size="small" color="error" onClick={() => fnDeleteComments(comment.comments_id)}>삭제</Button>
-                    </Box>
-                  )}
-                </ListItem>
-              ))}
+              {comments.map(comment => renderComment(comment))}
             </List>
             <TextField
               label="댓글을 입력하세요"
