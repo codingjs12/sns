@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ImageList from '@mui/material/ImageList';
 import ImageListItem from '@mui/material/ImageListItem';
+import Slider from 'react-slick';
+import { useNavigate } from 'react-router-dom';
 import {
   Grid,
   AppBar,
@@ -28,6 +30,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { jwtDecode } from 'jwt-decode';
 
 function Feed() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [selectedFeed, setSelectedFeed] = useState(null);
   const [comments, setComments] = useState([]);
@@ -51,6 +54,12 @@ function Feed() {
     .then(data => {
       setFeedList(data.list);
     })
+
+    fetch("http://localhost:3000/feed/img")
+    .then(res => res.json())
+    .then(data => {
+      setImgList(data.imgList);
+    })
   }
 
   useEffect(()=>{
@@ -63,7 +72,6 @@ function Feed() {
     .then(data=>{
       const commentList = data.comments || [];
       const tree = buildCommentTree(commentList);
-      console.log(tree);
       setComments(tree);
     })
   }
@@ -73,7 +81,6 @@ function Feed() {
     .then(res=>res.json())
     .then(data=>{
       setSelectedFeed(data.feed);
-      setImgList(data.imgList);
     })
     fnGetComments(feed);
     setOpen(true);
@@ -125,7 +132,6 @@ function Feed() {
     })
     .then(res => res.json())
     .then(data => {
-      console.log(data.message);
       fnGetComments(selectedFeed);
       
     })
@@ -247,17 +253,36 @@ const isAllChildrenDeleted = (comment) => {
 
       <Box mt={4}>
         <Grid container spacing={3}>
-          {feedList && feedList.map((feed) => (
+          {feedList && feedList.map((feed) => {
+          const matchedImg = imgList?.find(img => img.target_id === feed.feed_id);
+
+          return (
             <Grid key={feed.feed_id} size={8} >
               <Card>
-                <CardMedia
-                  component="img"
-                  height="200"
-                  image={"http://localhost:3000/" + feed.imgPath}
-                  alt={feed.feed_title}
-                  onClick={() => handleClickOpen(feed)}
-                  style={{ cursor: 'pointer' }}
-                />
+            {matchedImg ? (
+              <CardMedia
+                component="img"
+                height="200"
+                image={`http://localhost:3000/${matchedImg.img_path}${matchedImg.img_name}`}
+                alt={feed.feed_title}
+                onClick={() => handleClickOpen(feed)}
+                style={{ cursor: 'pointer' }}
+              />
+              ) : (
+              <Box
+                height="200px"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                bgcolor="#f0f0f0"
+                onClick={() => handleClickOpen(feed)}
+                style={{ cursor: 'pointer' }}
+              >
+              <Typography variant="body2" color="textSecondary">
+                이미지 없음
+              </Typography>
+              </Box>
+              )}
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">
                     {feed.user_nickname}
@@ -276,7 +301,7 @@ const isAllChildrenDeleted = (comment) => {
                 )}
               </Card>
             </Grid>
-          ))}
+          )})}
         </Grid>
       </Box>
 
@@ -299,10 +324,10 @@ const isAllChildrenDeleted = (comment) => {
             <Typography variant="body1">{selectedFeed?.feed_content}</Typography>
             {imgList && (
               <ImageList sx={{ width: 500, height: 450 }} cols={3} rowHeight={164}>
-              {imgList.map((item) => (
-                <ImageListItem key={item.img}>
+              {imgList.filter(item => item.target_id === selectedFeed?.feed_id).map((item) => (
+                <ImageListItem key={item.img_id}>
                   <img
-                    src={`${"http://localhost:3000/"+item.imgPath}?w=164&h=164&fit=crop&auto=format`}
+                    src={`${"http://localhost:3000/"+item.img_path+item.img_name}`}
                     alt={item.title}
                     loading="lazy"
                   />
