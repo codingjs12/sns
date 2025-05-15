@@ -1,10 +1,11 @@
 import {useState, React, useEffect} from 'react';
 import { Container, Typography, Box, Avatar, Grid, Paper, DialogTitle, DialogContent, Dialog, Button, DialogActions } from '@mui/material';
 import { jwtDecode } from 'jwt-decode';
+import MyFeed from './MyFeed';
 
 function MyPage() {
   const token = localStorage.getItem("token");
-  let [info, setInfo] = useState({user_nickname : "", user_email : "", intro : ""});
+  let [info, setInfo] = useState({user_nickname : "", user_email : "", intro : "", img_name : "", img_path : ""});
   let [open, setOpen] = useState(false);
   let [imgUrl, setImgUrl] = useState();
   let [insertFile, setFile] = useState();
@@ -41,17 +42,13 @@ function MyPage() {
     const formData = new FormData();
 
     formData.append("file", insertFile);
-    formData.append("email", info.email);
+    formData.append("userId", sessionUser.userId);
 
-    fetch("http://localhost:3000/member/upload", {
-      method : "PUT",
-
-      body : formData
-
+    fetch("http://localhost:3000/user/upload", {
+      method : "POST",
+      body : formData,
     })
-    .then(res => res.json(
-
-    ))
+    .then(res => res.json())
     .then(data => {
       console.log(data.result);
       alert(data.message);
@@ -92,11 +89,9 @@ function MyPage() {
       fnGetFollower(sessionUser.userId);
       fnGetFollowing(sessionUser.userId);
       fnGetFeedCnt(sessionUser.userId);
-
     }
 
   }, [])
-
 
   return (
     <Container maxWidth="md">
@@ -113,7 +108,7 @@ function MyPage() {
           <Box display="flex" flexDirection="column" alignItems="center" sx={{ marginBottom: 3 }}>
             <Avatar
               alt="프로필 이미지"
-              src={info.profileImg ? "http://localhost:3000/"+info.profileImg : "https://images.unsplash.com/photo-1551963831-b3b1ca40c98e"} // 프로필 이미지 경로
+              src={info.img_name ? `http://localhost:3000/${info.img_path}${info.img_name}` : "https://images.unsplash.com/photo-1551963831-b3b1ca40c98e"} // 프로필 이미지 경로
               sx={{ width: 100, height: 100, marginBottom: 2 }}
               onClick={()=>{setOpen(!open)}}
             />
@@ -172,6 +167,7 @@ function MyPage() {
             }}>취소</Button>
           </DialogActions>
         </Dialog>
+        <MyFeed onFeedChange={() => fnGetFeedCnt(sessionUser.userId)}/>
       </Box>
     </Container>
   );

@@ -21,15 +21,16 @@ import {
   Button,
   TextField,
   List,
-  ListItem,
+  Stack,
   ListItemText,
   ListItemAvatar,
   Avatar,
 } from '@mui/material';
+import { PhotoCamera, Close } from '@mui/icons-material';
 import CloseIcon from '@mui/icons-material/Close';
 import { jwtDecode } from 'jwt-decode';
 
-function Feed() {
+function MyFeed({onFeedChange}) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [selectedFeed, setSelectedFeed] = useState(null);
@@ -47,6 +48,9 @@ function Feed() {
   const [editContent, setEditContent] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [editFeedId, setEditFeedId] = useState(null);
+  
+  const [files, setFiles] = useState([]); 
+  const [previews, setPreviews] = useState([]);
 
   const fnFeedList = () => {
     fetch("http://localhost:3000/feed")
@@ -123,6 +127,7 @@ function Feed() {
     .then(data => {
         alert(data.message);
         fnFeedList();
+        if (onFeedChange) onFeedChange();
     })
   };
 
@@ -137,10 +142,12 @@ function Feed() {
     })
   };
 
-  const fnEditFeed = (feedId) => {
+  const fnEditFeed = (feed) => {
     setEditOpen(true);
-    setEditTitle(selectedFeed.feed_title);
-    setEditContent(selectedFeed.feed_content);
+    setEditTitle(feed.feed_title);
+    setEditContent(feed.feed_content);
+    setEditFeedId(feed.feed_id);
+    fnGetImg(feed.feed_id);
   }
 
   const fnEditComment = (commentsId) => {
@@ -241,48 +248,88 @@ const isAllChildrenDeleted = (comment) => {
   return comment.children.every(child => child.is_deleted === 'Y');
 };
 
+const handleEditSubmit = () => {
+  fetch(`http://localhost:3000/feed/${editFeedId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      feed_title: editTitle,
+      feed_content: editContent
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    alert(data.message);
+    setEditOpen(false);
+    fnFeedList(); // 피드 목록 새로고침
+  });
+};
 
+  // 개별 미리보기 제거
+  const handleRemove = (idx) => {
+    setFiles(files.filter((_, i) => i !== idx));
+    setPreviews(previews.filter((_, i) => i !== idx));
+  };
+
+    // 파일 선택 시
+  const handleFileChange = (e) => {
+    const chosen = Array.from(e.target.files);
+    setFiles(chosen);
+    // URL 생성
+    setPreviews(chosen.map(file => URL.createObjectURL(file)));
+  };
+
+  const fnGetImg = (feedId) => {
+    fetch("http://localhost:3000/feed/img", {
+      method:"POST",
+      headers : {"Content-Type": "application/json"},
+      body : JSON.stringify({ feedId })
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log(data.list);
+      const imageUrls = data.list.map(img => `http://localhost:3000/${img.img_path}${img.img_name}`);
+      setFiles(data.list);
+      setPreviews(imageUrls);
+    })
+  }
 
   return (
     <Container maxWidth="md">
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6">SNS</Typography>
-        </Toolbar>
-      </AppBar>
-
       <Box mt={4}>
         <Grid container spacing={3}>
-          {feedList && feedList.map((feed) => {
-          const matchedImg = imgList?.find(img => img.target_id === feed.feed_id);
+          {feedList && feedList.filter(feed => feed.user_id === sessionUser.userId)
+          .map((feed) => {
+            const matchedImg = imgList?.find(img => img.target_id === feed.feed_id);
 
-          return (
-            <Grid key={feed.feed_id} size={8} >
-              <Card>
-            {matchedImg ? (
-              <CardMedia
-                component="img"
-                height="200"
-                image={`http://localhost:3000/${matchedImg.img_path}${matchedImg.img_name}`}
-                alt={feed.feed_title}
-                onClick={() => handleClickOpen(feed)}
-                style={{ cursor: 'pointer' }}
-              />
-              ) : (
-              <Box
-                height="200px"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                bgcolor="#f0f0f0"
-                onClick={() => handleClickOpen(feed)}
-                style={{ cursor: 'pointer' }}
-              >
-              <Typography variant="body2" color="textSecondary">
-                이미지 없음
-              </Typography>
-              </Box>
-              )}
+            return (
+              <Grid key={feed.feed_id} size={8} >
+                <Card>
+                {matchedImg ? (
+                  <CardMedia
+                    component="img"
+                    height="200"
+                    image={`http://localhost:3000/${matchedImg.img_path}${matchedImg.img_name}`}
+                    alt={feed.feed_title}
+                    onClick={() => handleClickOpen(feed)}
+                    style={{ cursor: 'pointer' }}
+                  /> ) : (
+                  <Box
+                    height="200px"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    bgcolor="#f0f0f0"
+                    onClick={() => handleClickOpen(feed)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                  <Typography variant="body2" color="textSecondary">
+                    이미지 없음
+                  </Typography>
+                  </Box>
+                )}
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">
                     {feed.user_nickname}
@@ -315,7 +362,7 @@ const isAllChildrenDeleted = (comment) => {
             aria-label="close"
             sx={{ position: 'absolute', right: 8, top: 8 }}
           >
-            <CloseIcon />
+            <CloseIcon/>
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ display: 'flex' }}>
@@ -365,8 +412,89 @@ const isAllChildrenDeleted = (comment) => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>피드 수정</DialogTitle>
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="제목"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="내용"
+            type="text"
+            fullWidth
+            multiline
+            rows={4}
+            variant="outlined"
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditOpen(false)} color="primary">
+            취소
+          </Button>
+          <Button onClick={handleEditSubmit} color="primary" variant="contained">
+            수정 완료
+          </Button>
+        </DialogActions>
+
+        {/* 파일 선택 버튼 */}
+        <Box display="flex" alignItems="center" mt={2}>
+          <input
+          multiple
+          accept="image/*"
+          style={{ display: 'none' }}
+          id="file-upload"
+          type="file"
+          onChange={handleFileChange}
+        />
+          <label htmlFor="file-upload">
+            <IconButton color="primary" component="span">
+              <PhotoCamera />
+            </IconButton>
+          </label>
+          <Typography variant="body1" ml={1}>
+            {files.length > 0 ? `${files.length}개 선택됨` : '첨부할 파일 선택'}
+          </Typography>
+        </Box>
+
+        {/* 이미지 미리보기 */}
+        {previews.length > 0 && (
+          <Stack direction="row" flexWrap="wrap" mt={2} spacing={1}>
+            {previews.map((src, idx) => (
+              <Box key={idx} position="relative">
+                <Avatar
+                  variant="rounded"
+                  src={src}
+                  sx={{ width: 80, height: 80 }}
+                />
+                <IconButton
+                  size="small"
+                  onClick={() => handleRemove(idx)}
+                  sx={{
+                    position: 'absolute',
+                    top: -6, right: -6,
+                    bgcolor: 'rgba(0,0,0,0.6)', color: 'white',
+                    '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' }
+                  }}
+                >
+                  <Close fontSize="small" />
+                </IconButton>
+              </Box>
+            ))}
+          </Stack>
+        )}
+      </Dialog>
     </Container>
   );
 }
 
-export default Feed;
+export default MyFeed;

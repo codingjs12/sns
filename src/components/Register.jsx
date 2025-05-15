@@ -73,7 +73,7 @@ function Register() {
       body: formData
     })
     .then(res => res.json())
-    .then(_ => {
+    .then(data => {
       navigate("/feed");
     })
     .catch(err => console.error(err));
@@ -83,15 +83,6 @@ function Register() {
     <Container maxWidth="sm">
       <Box display="flex" flexDirection="column" alignItems="center" sx={{ p:2 }}>
         <Typography variant="h4" gutterBottom>등록</Typography>
-
-        <FormControl fullWidth margin="normal">
-          <InputLabel>카테고리</InputLabel>
-          <Select defaultValue="" label="카테고리">
-            <MenuItem value={1}>일상</MenuItem>
-            <MenuItem value={2}>여행</MenuItem>
-            <MenuItem value={3}>음식</MenuItem>
-          </Select>
-        </FormControl>
 
         <TextField inputRef={titleRef} label="제목" fullWidth margin="normal"/>
         <TextField inputRef={contentRef} label="내용" fullWidth multiline rows={4} margin="normal"/>
