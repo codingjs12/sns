@@ -1,97 +1,130 @@
-import {useState, React, useEffect} from 'react';
-import { Container, Typography, Box, Avatar, Grid, Paper, DialogTitle, DialogContent, Dialog, Button, DialogActions } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import {
+  Container, Typography, Box, Avatar, Grid, Paper,
+  DialogTitle, DialogContent, Dialog, Button, DialogActions
+} from '@mui/material';
+import { useParams } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import MyFeed from './MyFeed';
 
 function MyPage() {
+  const { userId } = useParams();  // URL에서 userId 추출
   const token = localStorage.getItem("token");
-  let [info, setInfo] = useState({user_nickname : "", user_email : "", intro : "", img_name : "", img_path : ""});
-  let [open, setOpen] = useState(false);
-  let [imgUrl, setImgUrl] = useState();
-  let [insertFile, setFile] = useState();
-  let [follower, setFollower] = useState(0);
-  let [following, setFollowing] = useState(0);
-  let [feedCnt, setFeedCnt] = useState(0);
-  
   const sessionUser = token ? jwtDecode(token) : null;
+  const isMyPage = sessionUser?.userId == userId;
 
+  const [info, setInfo] = useState({ user_nickname: "", user_email: "", intro: ""});
+  const [open, setOpen] = useState(false);
+  const [imgUrl, setImgUrl] = useState();
+  const [insertFile, setFile] = useState();
+  const [follower, setFollower] = useState(0);
+  const [following, setFollowing] = useState(0);
+  const [feedCnt, setFeedCnt] = useState(0);
 
-  const fnUserInfo = () => {
-    if(!token) {
-      alert("로그인해주세요.");
-      return;
-    }
-    fetch("http://localhost:3000/user/"+sessionUser.userId)
+  const [imgInfo, setImgInfo] = useState({ img_name : "", img_path : "" });
+
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  console.log("userId", userId);
+  console.log("sessionUser", sessionUser.userId);
+
+  const fnUserInfo = (id) => {
+    fetch(`http://localhost:3000/user/${id}`)
+      .then(res => res.json())
+      .then(data => setInfo(data.info));
+  };
+
+  const fnGetImg = (id) => {
+    fetch(`http://localhost:3000/user/img/${id}`)
     .then(res => res.json())
     .then(data => {
-      setInfo(data.info);
-      console.log(data.info);
+      setImgInfo(data.imgInfo);
+      console.log(data);
     });
+
   }
 
   const selectImg = (e) => {
     const file = e.target.files[0];
-    if(file) {
-      const imgUrl = URL.createObjectURL(file);
-      setImgUrl(imgUrl);
+    if (file) {
+      setImgUrl(URL.createObjectURL(file));
       setFile(file);
     }
-  }
+  };
 
   const fnSave = () => {
     const formData = new FormData();
-
     formData.append("file", insertFile);
     formData.append("userId", sessionUser.userId);
 
     fetch("http://localhost:3000/user/upload", {
-      method : "POST",
-      body : formData,
+      method: "POST",
+      body: formData,
     })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+        setOpen(false);
+        fnUserInfo(sessionUser.userId);
+      });
+  };
+
+  const fnGetFollower = (id) => {
+    fetch(`http://localhost:3000/user/follower/${id}`)
+      .then(res => res.json())
+      .then(data => setFollower(data.follower));
+  };
+
+  const fnGetFollowing = (id) => {
+    fetch(`http://localhost:3000/user/following/${id}`)
+      .then(res => res.json())
+      .then(data => setFollowing(data.following));
+  };
+
+  const fnGetFeedCnt = (id) => {
+    fetch(`http://localhost:3000/user/feedCnt/${id}`)
+      .then(res => res.json())
+      .then(data => setFeedCnt(data.count));
+  };
+
+  const handleFollowToggle = () => {
+    const url = isFollowing
+    ? `http://localhost:3000/user/unfollow`
+    : `http://localhost:3000/user/follow`;
+
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      followerId: sessionUser.userId,
+      followingId: userId
+    })
+  })
     .then(res => res.json())
     .then(data => {
-      console.log(data.result);
       alert(data.message);
-      setOpen(false);
-      fnUserInfo();
-    })
+      setIsFollowing(!isFollowing);
+      fnGetFollower(userId); // 팔로워 수 갱신
+    });
   }
 
-  const fnGetFollowing = (userId) => {
-    fetch("http://localhost:3000/user/following/"+userId)
+  const checkFollowing = () => {
+    if (!sessionUser) return;
+    fetch(`http://localhost:3000/user/isFollowing?from=${sessionUser.userId}&to=${userId}`)
     .then(res => res.json())
-    .then(data => {
-      console.log(data);
-      setFollowing(data.following);
-    })
-  }
-  const fnGetFollower = (userId) => {
-    fetch("http://localhost:3000/user/follower/"+userId)
-    .then(res => res.json())
-    .then(data => {
-      console.log(data);
-      setFollower(data.follower);
-    })
-  }
+    .then(data => setIsFollowing(data.isFollowing));
+  };
 
-  const fnGetFeedCnt = (userId) => {
-    fetch("http://localhost:3000/user/feedCnt/" +userId)
-    .then(res => res.json())
-    .then(data => {
-      console.log(data);
-      setFeedCnt(data.count);
-    })
-  }
-
-  useEffect(()=>{
-    if(sessionUser) {
-      fnUserInfo();
-      fnGetFollower(sessionUser.userId);
-      fnGetFollowing(sessionUser.userId);
-      fnGetFeedCnt(sessionUser.userId);
+  useEffect(() => {
+    if (userId) {
+      fnUserInfo(userId);
+      fnGetImg(userId);
+      fnGetFollower(userId);
+      fnGetFollowing(userId);
+      fnGetFeedCnt(userId);
+      if (!isMyPage) checkFollowing();
     }
-
-  }, [])
+  }, [userId]);
 
   return (
     <Container maxWidth="md">
@@ -104,13 +137,16 @@ function MyPage() {
         sx={{ padding: '20px' }}
       >
         <Paper elevation={3} sx={{ padding: '20px', borderRadius: '15px', width: '100%' }}>
-          {/* 프로필 정보 상단 배치 */}
           <Box display="flex" flexDirection="column" alignItems="center" sx={{ marginBottom: 3 }}>
             <Avatar
               alt="프로필 이미지"
-              src={info.img_name ? `http://localhost:3000/${info.img_path}${info.img_name}` : "https://images.unsplash.com/photo-1551963831-b3b1ca40c98e"} // 프로필 이미지 경로
+              src={
+                imgInfo.img_name
+                  ? `http://localhost:3000/${imgInfo.img_path}${imgInfo.img_name}`
+                  : "https://images.unsplash.com/photo-1551963831-b3b1ca40c98e"
+              }
               sx={{ width: 100, height: 100, marginBottom: 2 }}
-              onClick={()=>{setOpen(!open)}}
+              onClick={() => isMyPage && setOpen(true)}
             />
             <Typography variant="h5">{info.user_nickname}</Typography>
             <Typography variant="body2" color="text.secondary">
@@ -133,41 +169,53 @@ function MyPage() {
           </Grid>
           <Box sx={{ marginTop: 3 }}>
             <Typography variant="h6">내 소개</Typography>
-            <Typography variant="body1">
-              {info.intro}
-            </Typography>
+            <Typography variant="body1">{info.intro}</Typography>
           </Box>
+          {!isMyPage && (
+  <Box mt={2} textAlign="center">
+    <Button
+      variant={isFollowing ? "outlined" : "contained"}
+      onClick={handleFollowToggle}
+    >
+      {isFollowing ? "언팔로우" : "팔로우"}
+    </Button>
+  </Box>
+)}
         </Paper>
-        <Dialog open={open}>
-          <DialogTitle>이미지수정</DialogTitle>
-          <DialogContent>
-            <label>
-              <input onChange={selectImg} type="file" accept='image/*' style={{display : "none"}}></input>
-              <Button variant='contained' component="span">이미지 선택</Button>
-              {!imgUrl ? "선택된 파일 없음" : "이미지 선택 됨"}
-            </label>
-          </DialogContent>
-          {imgUrl && (
-            <Box mt = {2}>
-            <Typography variant='subtitle1'>미리보기</Typography>
-            <Avatar
-            alt="미리 보기"
-            src={imgUrl} // 프로필 이미지 경로
-            sx={{ width: 100, height: 100, marginBottom: 2 }}
-            onClick={()=>{setOpen(!open)}}
-          />
-          </Box>)}
-          <DialogActions>
-            <Button variant='contained' onClick={()=>{
-              fnSave();
-            }}>저장</Button>
-            <Button variant='outlined' onClick={()=>{
-              setOpen(false);
-              setImgUrl(null);
-            }}>취소</Button>
-          </DialogActions>
-        </Dialog>
-        <MyFeed onFeedChange={() => fnGetFeedCnt(sessionUser.userId)}/>
+
+        {/* 프로필 이미지 수정 다이얼로그 (본인일 때만 표시) */}
+        {isMyPage && (
+          <Dialog open={open}>
+            <DialogTitle>이미지 수정</DialogTitle>
+            <DialogContent>
+              <label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={selectImg}
+                />
+                <Button variant="contained" component="span">
+                  이미지 선택
+                </Button>
+                {!imgUrl ? "선택된 파일 없음" : "이미지 선택 됨"}
+              </label>
+            </DialogContent>
+            {imgUrl && (
+              <Box mt={2} textAlign="center">
+                <Typography variant="subtitle1">미리보기</Typography>
+                <Avatar src={imgUrl} sx={{ width: 100, height: 100, marginBottom: 2 }} />
+              </Box>
+            )}
+            <DialogActions>
+              <Button variant="contained" onClick={fnSave}>저장</Button>
+              <Button variant="outlined" onClick={() => { setOpen(false); setImgUrl(null); }}>취소</Button>
+            </DialogActions>
+          </Dialog>
+        )}
+
+        {/* 게시물 리스트 */}
+        <MyFeed userId={userId} onFeedChange={() => fnGetFeedCnt(userId)} />
       </Box>
     </Container>
   );

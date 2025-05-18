@@ -2,8 +2,13 @@ import React from 'react';
 import { Drawer, List, ListItem, ListItemText, Typography, Toolbar, ListItemIcon } from '@mui/material';
 import { Home, Add, AccountCircle } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
 
 function Menu() {
+
+const token = localStorage.getItem("token");
+const sessionUser = token ? jwtDecode(token) : null;
+
   return (
     <Drawer
       variant="permanent"
@@ -33,17 +38,11 @@ function Menu() {
           </ListItemIcon>
           <ListItemText primary="등록" />
         </ListItem>
-        <ListItem component={Link} to="/mypage">
+        <ListItem component={Link} to={`/mypage/${sessionUser.userId}`}>
           <ListItemIcon>
             <AccountCircle />
           </ListItemIcon>
           <ListItemText primary="마이페이지" />
-        </ListItem>
-        <ListItem component={Link} to="/recoil">
-          <ListItemIcon>
-            <AccountCircle />
-          </ListItemIcon>
-          <ListItemText primary="Recoil" />
         </ListItem>
       </List>
     </Drawer>

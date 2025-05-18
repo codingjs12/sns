@@ -30,7 +30,7 @@ import { PhotoCamera, Close } from '@mui/icons-material';
 import CloseIcon from '@mui/icons-material/Close';
 import { jwtDecode } from 'jwt-decode';
 
-function MyFeed({onFeedChange}) {
+function MyFeed({onFeedChange, userId}) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [selectedFeed, setSelectedFeed] = useState(null);
@@ -49,19 +49,24 @@ function MyFeed({onFeedChange}) {
   const [editTitle, setEditTitle] = useState('');
   const [editFeedId, setEditFeedId] = useState(null);
   
-  const [files, setFiles] = useState([]); 
+  const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
+
+  const [newFiles, setNewFiles] = useState([]);
+  const [serverFiles, setServerFiles] = useState([]);
 
   const fnFeedList = () => {
     fetch("http://localhost:3000/feed")
     .then(res => res.json())
     .then(data => {
       setFeedList(data.list);
+      console.log("fnFeedList 호출!", data.list);
     })
 
     fetch("http://localhost:3000/feed/img")
     .then(res => res.json())
     .then(data => {
+      console.log("fnFeedList 호출!", data.imgList);
       setImgList(data.imgList);
     })
   }
@@ -276,9 +281,8 @@ const handleEditSubmit = () => {
     // 파일 선택 시
   const handleFileChange = (e) => {
     const chosen = Array.from(e.target.files);
-    setFiles(chosen);
-    // URL 생성
-    setPreviews(chosen.map(file => URL.createObjectURL(file)));
+    setFiles(prev => [...prev, ...chosen]);
+    setPreviews(prev => [...prev, ...chosen.map(file => URL.createObjectURL(file))]);
   };
 
   const fnGetImg = (feedId) => {
@@ -289,7 +293,7 @@ const handleEditSubmit = () => {
     })
     .then(res => res.json())
     .then(data => {
-      console.log(data.list);
+      console.log("fnGetImg 호출!", data.list);
       const imageUrls = data.list.map(img => `http://localhost:3000/${img.img_path}${img.img_name}`);
       setFiles(data.list);
       setPreviews(imageUrls);
@@ -300,9 +304,9 @@ const handleEditSubmit = () => {
     <Container maxWidth="md">
       <Box mt={4}>
         <Grid container spacing={3}>
-          {feedList && feedList.filter(feed => feed.user_id === sessionUser.userId)
+          {feedList && feedList.filter(feed => feed.user_id == userId)
           .map((feed) => {
-            const matchedImg = imgList?.find(img => img.target_id === feed.feed_id);
+            const matchedImg = imgList?.find(img => img.target_id == feed.feed_id);
 
             return (
               <Grid key={feed.feed_id} size={8} >

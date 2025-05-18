@@ -3,6 +3,7 @@ import ImageList from '@mui/material/ImageList';
 import ImageListItem from '@mui/material/ImageListItem';
 import Slider from 'react-slick';
 import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   Grid,
   AppBar,
@@ -39,14 +40,14 @@ function Feed() {
   const [imgList, setImgList] = useState();
   const token = localStorage.getItem("token");
   const sessionUser = jwtDecode(token);
-  const [parentId, setParentId] = useState(null);
-  const [replyTo, setReplyTo] = useState(null); // 대댓글 입력할 댓글 ID
+  const [parentId, setParentId] = useState(0);
+  const [replyTo, setReplyTo] = useState(0); // 대댓글 입력할 댓글 ID
   const [replyContent, setReplyContent] = useState(''); // 대댓글 내용
 
   const [editOpen, setEditOpen] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [editTitle, setEditTitle] = useState('');
-  const [editFeedId, setEditFeedId] = useState(null);
+  const [editFeedId, setEditFeedId] = useState(0);
 
   const [editImages, setEditImages] = useState([]);         // File 객체
   const [editPreviews, setEditPreviews] = useState([]);     // Preview URL
@@ -309,9 +310,9 @@ const handleEditSubmit = () => {
               </Box>
               )}
                 <CardContent>
-                  <Typography variant="body2" color="textSecondary">
+                  <Link to={`/mypage/${feed.user_id}`}>
                     {feed.user_nickname}
-                  </Typography>
+                  </Link>
                 </CardContent>
                 <CardContent>
                   <Typography variant="body2" color="textSecondary">
