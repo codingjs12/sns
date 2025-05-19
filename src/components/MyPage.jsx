@@ -11,7 +11,7 @@ function MyPage() {
   const { userId } = useParams();  // URL에서 userId 추출
   const token = localStorage.getItem("token");
   const sessionUser = token ? jwtDecode(token) : null;
-  const isMyPage = sessionUser?.userId === userId;
+  const isMyPage = sessionUser?.userId == userId;
 
   const [info, setInfo] = useState({ user_nickname: "", user_email: "", intro: ""});
   const [open, setOpen] = useState(false);
