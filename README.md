@@ -1,5 +1,5 @@
 <div>
-    <img src="https://capsule-render.vercel.app/api?type=soft&color=0:00c6ff,100:0072ff&height=200&text=mysns&fontColor=ffffff&fontSize=50" />
+    <img src="https://capsule-render.vercel.app/api?type=soft&color=0:00c6ff,100:0072ff&height=200&text=MySNS&fontColor=ffffff&fontSize=50" />
 </div>
 <div>
     <img src="public/feedList.png" style="width:900px;">
@@ -49,7 +49,6 @@
     <img src="public/edit.png">
     <br />
     <div>- 프로필 사진 수정 가능(사진 첨부 기능 구현)</div>
-    <div>- 프로필 내용 수정 기능 구현</div>
     <h3>6. 글 작성 </h3>
     <img src="public/feedAdd.png">
     <div>- 게시글 작성 기능 (사진 첨부 포함)</div>
@@ -61,5 +60,4 @@
         React의 Hooks 를 사용하면서 리액트의 특징에 대해 깊게 이해하는 계기가 되었습니다.<br />
         제한된 개발 기간 동안 핵심 기능에 집중하였고, 데드라인의 중요성에 대해 배웠습니다.
     </div>
-   
 </div>
