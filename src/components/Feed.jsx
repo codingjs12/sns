@@ -53,6 +53,17 @@ function Feed() {
   const [editPreviews, setEditPreviews] = useState([]);     // Preview URL
   const [existingImages, setExistingImages] = useState([]);
 
+  const [imgInfo, setImgInfo] = useState({ img_name : "", img_path : "" });
+
+const fnGetImg = (id) => {
+    fetch(`http://localhost:3000/user/img/${id}`)
+    .then(res => res.json())
+    .then(data => {
+      setImgInfo(data.imgInfo);
+    });
+
+  }
+
   const fnFeedList = () => {
     fetch("http://localhost:3000/feed")
     .then(res => res.json())
@@ -67,9 +78,13 @@ function Feed() {
     })
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     fnFeedList();
+    fnGetImg(sessionUser.userId);
+    
   }, [])
+
+
 
   const fnGetComments = (feed) => {
     fetch("http://localhost:3000/feed/" + feed.feed_id + "/comments")
@@ -184,7 +199,9 @@ function Feed() {
   <Box key={comment.comments_id} sx={{ pl: depth * 4, mt: 2 }}>
     <Box sx={{ display: 'flex', alignItems: 'center' }}>
       <ListItemAvatar>
-        <Avatar>{comment.user_nickname.charAt(0).toUpperCase()}</Avatar>
+        <Avatar src = {imgInfo.img_name
+                  ? `http://localhost:3000/${imgInfo.img_path}${imgInfo.img_name}`
+                  : "https://images.unsplash.com/photo-1551963831-b3b1ca40c98e"}></Avatar>
       </ListItemAvatar>
       <ListItemText
         primary={comment.is_deleted == 'Y' ? "삭제된 댓글입니다." : comment.comments_content}
